@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
+    <RootNamespace>tile_scanner</RootNamespace>
+    <Platforms>AnyCPU;x64</Platforms>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="BitMiracle.LibTiff.NET" Version="2.4.649" />
+    <PackageReference Include="FreeImage.Standard" Version="4.3.8" />
+    <PackageReference Include="ImageSdk" Version="2.0.1" />
+    <PackageReference Include="ImageSdk.3DHistech" Version="1.0.18" />
+    <PackageReference Include="ImageSdk.Argos" Version="1.0.4" />
+    <PackageReference Include="ImageSdk.Common" Version="2.0.5" />
+    <PackageReference Include="ImageSdk.Contracts" Version="1.0.20" />
+    <PackageReference Include="ImageSdk.DataMatrix" Version="1.4.1" />
+    <PackageReference Include="ImageSdk.Hamamatsu" Version="2.0.11" />
+    <PackageReference Include="ImageSdk.Motic" Version="1.0.22" />
+    <PackageReference Include="ImageSdk.Philips" Version="1.2.1" />
+    <PackageReference Include="ImageSdk.PhilipsWrapper" Version="1.2.10" />
+    <PackageReference Include="ImageSdk.Precipoint" Version="2.0.1" />
+    <PackageReference Include="ImageSdk.SimpleImage" Version="1.1.0" />
+    <PackageReference Include="ImageSdk.Szi" Version="3.0.1" />
+    <PackageReference Include="ImageSdk.Tiff" Version="1.2.0" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="6.0.0" />
+    <PackageReference Include="SharpZipLib" Version="1.3.3" />
+  </ItemGroup>
+
+</Project>

@@ -1,6 +1,7 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Diagnostics;
+using System.IO;
 
 using ImageSdk;
 using ImageSdk.Contracts;
@@ -12,16 +13,18 @@ namespace tile_scanner
     {
         static void Main(string[] args)
         {
-            if (args.Length != 2)
+            if (args.Length != 3)
             {
-                Console.WriteLine("usage: tile-scanner slide-filename (row-major|column-major)");
-                Console.WriteLine("    eg.: tile-scanner 9235.sys row-major");
+                Console.WriteLine("usage: tile-scanner input-filename output-filename (row-major|column-major)");
+                Console.WriteLine("  eg.: tile-scanner 9235.sys f:/tmp/x row-major");
                 System.Environment.Exit(1);
             }
 
-            var filename = args[0];
-            var rowMajor = args[1] == "row-major";
-            Console.WriteLine($"testing: filename = {filename}, row-major = {rowMajor}");
+            var inputFilename = args[0];
+            var outputFilename = args[1];
+            var rowMajor = args[2] == "row-major";
+            var length = new System.IO.FileInfo(inputFilename).Length;
+            Console.WriteLine($"filename = {inputFilename}, outputFilename = {outputFilename}, row-major = {rowMajor}, {length / (1024 * 1024)} MB");
 
             var container = new ServiceCollection();
             var serviceProvider = container.BuildServiceProvider();
@@ -30,15 +33,17 @@ namespace tile_scanner
             Stopwatch stopWatch = new Stopwatch();
             stopWatch.Start();
 
-            using (var connector = factory.Create(filename))
+            using (var connector = factory.Create(inputFilename))
             {
-                // not a useful thing to change because of disc caching
+                // not a very useful thing to change because of disc caching
                 const int iterations = 1;
 
                 for (var loop = 0; loop < iterations; loop++)
                 {
-                    Console.WriteLine($"loop {loop} ...");
-                    ScanImage(connector, rowMajor);
+                    using (BinaryWriter binWriter = new BinaryWriter(File.Open(outputFilename, FileMode.Create)))
+                    {
+                        CopyImage(connector, binWriter, rowMajor);
+                    }
                 }
             }
 
@@ -48,11 +53,13 @@ namespace tile_scanner
             Console.WriteLine($"took: {ts.Hours:00}:{ts.Minutes:00}:{ts.Seconds:00}.{ts.Milliseconds / 10:00}");
         }
 
-        private static void ScanImage(IImageConnector connector, bool rowMajor)
+        private static void CopyImage(IImageConnector connector, BinaryWriter binWriter, bool rowMajor)
         {
             var zoomLevelInfo = connector.GetZoomLevels();
             var index = zoomLevelInfo.Length - 1;
             var level = zoomLevelInfo[index];
+
+            Console.WriteLine($"copying: {level.Columns} x {level.Rows} tiles ...");    
 
             if (rowMajor)
             {
@@ -61,6 +68,10 @@ namespace tile_scanner
                     for (var col = 0; col < level.Columns; col++)
                     {
                         var tile = connector.GetTile(index, col, row);
+                        if (tile != null)
+                        {
+                            binWriter.Write(tile);
+                        }
                     }
                 }
 
@@ -72,6 +83,10 @@ namespace tile_scanner
                     for (var row = 0; row < level.Rows; row++)
                     {
                         var tile = connector.GetTile(index, col, row);
+                        if (tile != null)
+                        {
+                            binWriter.Write(tile);
+                        }
                     }
                 }
             }

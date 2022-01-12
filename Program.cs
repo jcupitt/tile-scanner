@@ -1,7 +1,9 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Threading.Tasks;
 
 using ImageSdk;
 using ImageSdk.Contracts;
@@ -34,17 +36,9 @@ namespace tile_scanner
             stopWatch.Start();
 
             using (var connector = factory.Create(inputFilename))
+            using (BinaryWriter binWriter = new BinaryWriter(File.Open(outputFilename, FileMode.Create)))
             {
-                // not a very useful thing to change because of disc caching
-                const int iterations = 1;
-
-                for (var loop = 0; loop < iterations; loop++)
-                {
-                    using (BinaryWriter binWriter = new BinaryWriter(File.Open(outputFilename, FileMode.Create)))
-                    {
-                        CopyImage(connector, binWriter, rowMajor);
-                    }
-                }
+                CopyImage(connector, binWriter, rowMajor);
             }
 
             stopWatch.Stop();
@@ -58,38 +52,38 @@ namespace tile_scanner
             var zoomLevelInfo = connector.GetZoomLevels();
             var index = zoomLevelInfo.Length - 1;
             var level = zoomLevelInfo[index];
+            var innerParallelOptions = new ParallelOptions { MaxDegreeOfParallelism = 4 };
+            var stripLock = new object();
+            var outerLength = rowMajor ? level.Rows : level.Columns;
+            var innerLength = rowMajor ? level.Columns : level.Rows;
 
             Console.WriteLine($"copying: {level.Columns} x {level.Rows} tiles ...");    
 
-            if (rowMajor)
+            for (var outer = 0; outer < outerLength; outer++)
             {
-                for (var row = 0; row < level.Rows; row++)
-                {
-                    for (var col = 0; col < level.Columns; col++)
-                    {
-                        var tile = connector.GetTile(index, col, row);
-                        if (tile != null)
-                        {
-                            binWriter.Write(tile);
-                        }
-                    }
-                }
+                var strip = new Dictionary<(int, int), byte[]>();
 
-            }
-            else
-            {
-                for (var col = 0; col < level.Columns; col++)
+                Parallel.For(0, innerLength, innerParallelOptions, (inner, innerLoopState) =>
                 {
-                    for (var row = 0; row < level.Rows; row++)
+                    var column = rowMajor ? inner : outer;
+                    var row = rowMajor ? outer : inner;
+
+                    var tile = connector.GetTile(index, column, row);
+                    if (tile != null)
                     {
-                        var tile = connector.GetTile(index, col, row);
-                        if (tile != null)
+                        lock (stripLock)
                         {
-                            binWriter.Write(tile);
+                            strip.Add((column, row), tile);
                         }
                     }
+                });
+
+                foreach (var entry in strip)
+                {
+                    binWriter.Write(entry.Value);
                 }
             }
+
         }
     }
 }
